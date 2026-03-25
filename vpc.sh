@@ -22,11 +22,54 @@ if [ "$check_vpc" == "" ]; then
     echo "VPC created."
 else
     echo "VPC already exist"
+    vpc_id=$check_vpc
+    echo $vpc_id
 
 fi
 
-# Describe resource
-# if resource not exist
-# try to create resource
-# if there is error 
-# stop the script
+# create public subnet 10.0.1.0/24 in first az
+# create public subnet 10.0.2.0/24 in second az
+# create private subnet 10.0.3.0/24 in first az
+# create private subnet 10.0.4.0/24 in second az
+
+create_subnet()
+{
+    # $1 subnet number, $2 az, $3 public or private
+    check_subnet=$(aws ec2 describe-subnets --region us-east-1 --filters Name=tag:Name,Values=sub-$3-$1-devops90 | grep -oP '(?<="SubnetId": ")[^"]*')
+    if [ "$check_subnet" == "" ]; then
+        echo "subnet $1 will be created"
+
+        subnet_result=$(aws ec2 create-subnet \
+            --vpc-id $vpc_id --availability-zone us-east-1$2 \
+            --cidr-block 10.0.$1.0/24 \
+            --tag-specifications ResourceType=subnet,Tags="[{Key=Name,Value=sub-$3-$1-devops90}]" --output json)
+            
+        echo $subnet_result
+
+        subnet_id=$(echo $subnet_result | grep -oP '(?<="SubnetId": ")[^"]*')
+        echo $subnet_id
+
+        if [ "$subnet_id" == "" ]; then
+            echo "Error in create subnet $1"
+            exit 1
+        fi
+        echo "subnet $1 created."
+    else
+        echo "subnet $1 already exist"
+        subnet_id=$check_subnet
+        echo $subnet_id
+    fi
+}
+
+create_subnet 1 a public
+sub1_id=$subnet_id
+
+create_subnet 2 b public
+sub2_id=$subnet_id
+
+create_subnet 3 a private
+sub3_id=$subnet_id
+
+create_subnet 4 b private
+sub4_id=$subnet_id
+
