@@ -253,6 +253,27 @@ aws ec2 associate-route-table --route-table-id $private_rtb_id --subnet-id $sub4
 # ----------------------------------------------------------------------------
 ```
 
+### Explanation (what the script does)
+
+The script builds the networking layer for a “public/private subnets” VPC:
+
+1. **VPC**: looks for an existing VPC tagged `Name=devops90-vpc` in `us-east-1`; if missing, it creates a VPC with CIDR `10.0.0.0/16`.
+2. **Subnets**: calls `create_subnet()` four times to create/find:
+   - `sub-public-1-devops90` (`10.0.1.0/24`) in `us-east-1a`
+   - `sub-public-2-devops90` (`10.0.2.0/24`) in `us-east-1b`
+   - `sub-private-3-devops90` (`10.0.3.0/24`) in `us-east-1a`
+   - `sub-private-4-devops90` (`10.0.4.0/24`) in `us-east-1b`
+3. **Internet Gateway**: creates/finds an IGW tagged `Name=devops90-igw` and attaches it to the VPC if needed.
+4. **Route tables**:
+   - **Public**: creates/finds `public-devops90-rtb`, adds the default route `0.0.0.0/0 -> IGW`, and associates it with the two public subnets.
+   - **Private**: creates/finds `private-devops90-rtb` and associates it with the two private subnets. (No NAT gateway / no default internet route is configured here.)
+
+### Notes / assumptions
+
+- The script relies on `aws` CLI plus `grep -oP` to extract IDs from AWS CLI JSON output; if `grep -P` is unavailable, ID parsing may fail.
+- It’s designed around consistent `Name` tags for idempotency.
+- Some `aws ec2` calls rely on your AWS CLI default region; `us-east-1` is explicitly set in several key places.
+
 ## Usage
 
 Open this repository in your editor or GitHub to view the diagrams and use them as reference material for AWS networking discussions, documentation, or learning.
